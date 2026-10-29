@@ -91,6 +91,10 @@ tests on each push and pull request, then publishes this folder to GitHub Pages 
 The one thing a workflow cannot do for you: on a new repo, set **Settings → Pages → Build
 and deployment → Source** to **GitHub Actions** before the first deploy job will run.
 
+While the repo is private, that setting is unavailable on the free plan and there is nowhere
+to deploy to — so the deploy job asks the Pages API first and skips publishing with a note
+instead of failing every push. Flip it back to the same workflow once a Pages site exists.
+
 Browser storage — the autosave in `localStorage` and the Kiln Files library in IndexedDB —
 is scoped to the *origin*, not the URL path, so two copies of Kiln served from the same
 host would otherwise share one saved patch and one file library. That is exactly what

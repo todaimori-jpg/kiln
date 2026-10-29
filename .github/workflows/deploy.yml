@@ -37,7 +37,7 @@ jobs:
           for f in tools/test-*.js; do echo "· $f"; node "$f"; done
 
   deploy:
-    # Everything but a pull request: pushes to main, and a manual run, both publish.
+    # Everything but a pull request: pushes to main and a manual run both try to publish.
     if: github.event_name != 'pull_request'
     needs: test
     runs-on: ubuntu-latest
@@ -47,11 +47,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Pages cannot exist on a private repo on the Free plan, so a fresh clone would show a
+      # red X on every push. Ask the API first and skip the publishing steps instead; the
+      # project is meant to be published later, when this same run goes green by itself.
+      - name: Check for a Pages site
+        id: pages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/$GITHUB_REPOSITORY/pages")
+          if [ "$code" = "200" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+            echo "Pages: site found — publishing." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "Pages: API returned $code, so there is no site for this repo yet."
+              echo "Pick Deploy from a GitHub Action under Settings → Pages,"
+              echo "or make the repo public (Pages needs a paid plan on private repos)."
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - uses: actions/configure-pages@v5
+        if: steps.pages.outputs.enabled == 'true'
 
       # Kiln is the folder — but the checkout also carries .git and .github, and Pages
       # would serve whatever it is given. Stage only what the site needs.
       - name: Collect the site
+        if: steps.pages.outputs.enabled == 'true'
         run: |
           mkdir _site
           find . -mindepth 1 -maxdepth 1 \
@@ -59,8 +84,10 @@ jobs:
             -exec cp -r {} _site/ \;
 
       - uses: actions/upload-pages-artifact@v3
+        if: steps.pages.outputs.enabled == 'true'
         with:
           path: '_site'
 
       - id: deployment
+        if: steps.pages.outputs.enabled == 'true'
         uses: actions/deploy-pages@v4
