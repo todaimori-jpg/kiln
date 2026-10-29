@@ -1,0 +1,10 @@
+# Loose scripts served straight from the repo: keep the bytes identical everywhere so
+# Windows checkouts don't rewrite every file, and keep the diff noise out of reviews.
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.mp4 binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

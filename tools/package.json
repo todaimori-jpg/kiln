@@ -1,0 +1,13 @@
+{
+  "name": "kiln-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Local bridge between Kiln and OSC / Art-Net / sACN devices, plus an HTTP proxy for APIs without CORS headers",
+  "scripts": {
+    "start": "node relay.js",
+    "test": "node test-relay.js && node test-util.js && node test-storage.js"
+  },
+  "dependencies": {
+    "ws": "^8.22.0"
+  }
+}

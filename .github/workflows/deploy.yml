@@ -1,0 +1,66 @@
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Kiln ships loose scripts with no build step, so the cheapest useful check is
+      # that every file still parses. The tools/test-*.js suites load browser code into
+      # Node with a stubbed window — relay.js only requires `ws` when run as a server.
+      - name: Syntax check every script
+        run: |
+          find src tools -name '*.js' -print0 | xargs -0 -n1 node --check
+
+      - name: Run the test suites
+        run: |
+          for f in tools/test-*.js; do echo "· $f"; node "$f"; done
+
+  deploy:
+    # Everything but a pull request: pushes to main, and a manual run, both publish.
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/configure-pages@v5
+
+      # Kiln is the folder — but the checkout also carries .git and .github, and Pages
+      # would serve whatever it is given. Stage only what the site needs.
+      - name: Collect the site
+        run: |
+          mkdir _site
+          find . -mindepth 1 -maxdepth 1 \
+            -not -name .git -not -name .github -not -name _site \
+            -exec cp -r {} _site/ \;
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: '_site'
+
+      - id: deployment
+        uses: actions/deploy-pages@v4

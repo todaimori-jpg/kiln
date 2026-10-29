@@ -1,0 +1,6 @@
+# The app itself has no dependencies — only the optional relay does.
+node_modules/
+
+# System noise
+.DS_Store
+Thumbs.db
